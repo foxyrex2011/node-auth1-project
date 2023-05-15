@@ -1,12 +1,14 @@
 // Require `checkUsernameFree`, `checkUsernameExists` and `checkPasswordLength`
 // middleware functions from `auth-middleware.js`. You will need them here!
 const express = require('express')
+const bcrypt = require('bcryptjs')
 const router = express.Router()
 const {
   checkUsernameFree,
   checkUsernameExists,
   checkPasswordLength,
 } = require('./auth-middleware')
+const User = require('../users/users-model')
 
 /**
   1 [POST] /api/auth/register { "username": "sue", "password": "1234" }
@@ -30,8 +32,15 @@ const {
     "message": "Password must be longer than 3 chars"
   }
  */
-router.post('/register', checkPasswordLength, checkUsernameFree, () => {
-  console.log('working on post register route')
+router.post('/register', checkUsernameFree, checkPasswordLength, (req, res, next) => {
+  const { username, password } = req.body
+  const hash = bcrypt.hashSync(password, 8)
+
+  User.add({ username, password: hash })
+    .then(saved => {
+      res.status(201).json(saved)
+    })
+    .catch(next)
 })
 
 /**
@@ -49,8 +58,15 @@ router.post('/register', checkPasswordLength, checkUsernameFree, () => {
     "message": "Invalid credentials"
   }
  */
-router.post('/login', () => {
-  console.log('working on post login route')
+router.post('/login', checkUsernameExists, (req, res, next) => {
+  const { password } = req.body
+  if (bcrypt.compareSync(password, req.user.password)) {
+    req.session.user = req.user
+    res.json({ message: `Welcome ${req.user.username}`})
+  } else {
+    next({ status: 401, message: 'Invalid credentials' })
+  }
+
 })
 
 /**
@@ -68,8 +84,18 @@ router.post('/login', () => {
     "message": "no session"
   }
  */
-router.get('/logout', () => {
-  console.log('working on get route')
+router.get('/logout', (req, res, next) => {
+  if (req.session.user) {
+    req.session.destroy(err => {
+      if (err) {
+        next(err)
+      } else {
+        res.json({ message: 'logged out'})
+      }
+    })
+  } else {
+    res.json({ message: 'no session'})
+  }
 })
 
 // Don't forget to add the router to the `exports` object so it can be required in other modules

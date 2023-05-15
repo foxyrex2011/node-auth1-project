@@ -3,7 +3,7 @@ const db = require('../../data/db-config')
   resolves to an ARRAY with all users, each user having { user_id, username }
  */
 function find() {
-  return db('users').select('users_id', 'username')
+  return db('users').select('user_id', 'username')
 }
 
 /**
@@ -35,5 +35,5 @@ module.exports = {
   find,
   findBy,
   findById,
-  add
+  add,
 }
